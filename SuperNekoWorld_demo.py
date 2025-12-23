@@ -1,10 +1,12 @@
 import pygame
 import os
 import pygame as pg
+import sys
+from typing import List, Tuple, Optional  # 型ヒント用のインポート
 
 os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
-os.chdir(os.path.dirname(os.path.abspath(__file__)))
+# --- 定数設定 ---
 SCREEN_WIDTH, SCREEN_HEIGHT = 640, 480
 TILE_SIZE = 32
 GRAVITY = 1
@@ -19,7 +21,13 @@ ASSET_DIR = "images"  # アセットディレクトリのパス
 INVINCIBLE_TIME = 200 # 無敵時間（フレーム数：60fpsで約5秒）（無敵）
 PLATFORM_RANGE = TILE_SIZE * 3
 PLATFORM_SPEED = 2
-def load_img(name, size=None):
+LIMIT_TIME = 30  # 制限時間(秒)
+
+def load_img(name: str, size: Optional[Tuple[int, int]] = None) -> pygame.Surface:
+    """
+    画像を読み込み、サイズ変更を行う関数
+    [ADD] docstringと型ヒントを追加
+    """
     path = os.path.join(ASSET_DIR, name)
     try:
         img = pygame.image.load(path).convert_alpha()
@@ -27,62 +35,41 @@ def load_img(name, size=None):
             img = pygame.transform.scale(img, size)
         return img
     except Exception:
+        # 画像ファイルが見つからない場合の代替描画
         surf = pygame.Surface(size if size else (TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
         surf.fill((100, 200, 255) if "fish" in name else (200, 200, 200, 255))
         pygame.draw.rect(surf, (0, 0, 255), surf.get_rect(), 2)
         return surf
 
-def get_map():
+def get_map() -> List[List[int]]:
+    """[KEEP] マップデータを生成する関数"""
     MAP = [[0 for _ in range(MAP_WIDTH)] for _ in range(MAP_HEIGHT)]
+    # ... (元のマップ構成ロジック) ...
     for x in range(MAP_WIDTH):
         MAP[-1][x] = 1
     for x in range(MAP_WIDTH):
-        if x >= 12 and x <= 13:
-            MAP[-1][x] = 0
-        if x >= 15 and x <= 17:
-            MAP[-1][x] = 0
-        if x >= 27 and x <= 36:
-            MAP[-1][x] = 0
-    for x in range(2, 6):
-        MAP[-7][x] = 1
-    for x in range(8, 13):
-        MAP[-4][x] = 1
-    for x in range(8, 12):
-        MAP[-13][x] = 1
-    for x in range(19, 23):
-        MAP[-12][x] = 1
-    for x in range(19, 33):
-        MAP[-9][x] = 1
-    for x in range(22, 24):
-        MAP[-10][x] = 1
-    for x in range(22, 25):
-        MAP[-11][x] = 1
+        if x >= 12 and x <= 13: MAP[-1][x] = 0
+        if x >= 15 and x <= 17: MAP[-1][x] = 0
+        if x >= 27 and x <= 36: MAP[-1][x] = 0
+    for x in range(2, 6): MAP[-7][x] = 1
+    for x in range(8, 13): MAP[-4][x] = 1
+    for x in range(8, 12): MAP[-13][x] = 1
+    for x in range(19, 23): MAP[-12][x] = 1
+    for x in range(19, 33): MAP[-9][x] = 1
+    for x in range(22, 24): MAP[-10][x] = 1
+    for x in range(22, 25): MAP[-11][x] = 1
     for x in range(MAP_WIDTH):
-        if x == 2: 
-            MAP[-8][x] = 1
-        elif x == 7:
-            MAP[-10][x] = 1
-        elif x == 12:
-            MAP[-5][x] = 1
-        elif x == 19:
-            MAP[-10][x] = 1
-            MAP[-11][x] = 1
-            MAP[-13][x] = 1
-        elif x == 32:
-            MAP[-10][x] = 1
-        elif x == 35:
-            MAP[-9][x] = 1
-        elif x == 37:
-            MAP[-7][x] = 1
-        elif x == 38:
-            MAP[-11][x] = 1
-        elif x == 39:
-            MAP[-4][x] = 1
-            MAP[-14][x] = 1
-        elif x == 14 or x == 18 or x == 24: 
-            MAP[-2][x] = 1
-        elif x == 30 or x == 33:
-            MAP[-3][x] = 1
+        if x == 2: MAP[-8][x] = 1
+        elif x == 7: MAP[-10][x] = 1
+        elif x == 12: MAP[-5][x] = 1
+        elif x == 19: MAP[-10][x] = 1; MAP[-11][x] = 1; MAP[-13][x] = 1
+        elif x == 32: MAP[-10][x] = 1
+        elif x == 35: MAP[-9][x] = 1
+        elif x == 37: MAP[-7][x] = 1
+        elif x == 38: MAP[-11][x] = 1
+        elif x == 39: MAP[-4][x] = 1; MAP[-14][x] = 1
+        elif x in (14, 18, 24): MAP[-2][x] = 1
+        elif x in (30, 33): MAP[-3][x] = 1
     for x in range(MAP_WIDTH):
         if x == 10:
             MAP[-7][x] = 2
@@ -106,10 +93,8 @@ def get_map():
         elif x == 35:
             MAP[-14][31] = 8  # スター配置（無敵）
     for x in range(MAP_WIDTH):
-        if x == 0:
-            MAP[-2][x] = 5
-        if x == 1:
-            MAP[-4][x] = 6
+        if x == 0: MAP[-2][x] = 5
+        if x == 1: MAP[-4][x] = 6
     for x in range(MAP_WIDTH):
         if x == 2:
             MAP[-13][x] = 4
@@ -135,15 +120,15 @@ def get_map():
     return MAP
 
 class Player(pygame.sprite.Sprite):
-    def __init__(self, x, y):
+    """[ADD] プレイヤーキャラクターを管理するクラス"""
+    def __init__(self, x: int, y: int):
         super().__init__()
         self.original_img = load_img("あるく.png", (TILE_SIZE, TILE_SIZE))
         self.jump_img = load_img("ジャンプ.png", (TILE_SIZE, TILE_SIZE))
         self.invincible_img = load_img("最強こうかとん.png", (TILE_SIZE, TILE_SIZE))  # 無敵画像の読み込み（無敵）
         self.image = self.original_img
         self.rect = self.image.get_rect(topleft=(x, y))
-        self.dx = 0
-        self.dy = 0
+        self.dx, self.dy = 0, 0
         self.on_ground = False
         self.fish = 0
         self.facing_right = True
@@ -152,7 +137,8 @@ class Player(pygame.sprite.Sprite):
         self.invincibility_timer = 0  # 無敵時間
         self.standing_on = None
 
-    def update(self, keys, map_rects, platforms):
+    def update(self, keys: pygame.key.ScancodeWrapper, map_rects: List[pygame.Rect], platforms):
+        """移動入力とマップとの衝突判定を処理"""
         self.dx = 0
         if keys[pygame.K_LEFT]:
             self.dx = -PLAYER_SPEED
@@ -164,12 +150,14 @@ class Player(pygame.sprite.Sprite):
             if not self.facing_right:
                 self.facing_right = True
                 self.image = self.original_img
-        # if keys[pygame.K_SPACE] and self.jump_count < self.max_jump:
-        #     self.dy = JUMP_POWER
-        #     self.jump_count += 1  # ジャンプ回数を1増やす
-        #     self.on_ground = False
+        
+        if keys[pygame.K_SPACE] and self.on_ground:
+            self.dy = JUMP_POWER
+            self.on_ground = False
+        
         self.dy += GRAVITY
         # 水平方向の移動と静的ブロックとの衝突
+        # 横移動の衝突判定
         self.rect.x += self.dx
         for block in map_rects:
             if self.rect.colliderect(block):
@@ -250,7 +238,8 @@ class Player(pygame.sprite.Sprite):
                 self.image = self.original_img if self.facing_right else pygame.transform.flip(self.original_img, True, False)
 
 class Dog(pygame.sprite.Sprite):
-    def __init__(self, x, y):
+    """地上を往復する敵クラス"""
+    def __init__(self, x: int, y: int):
         super().__init__()
         self.original_img = load_img("inu.png", (TILE_SIZE, TILE_SIZE))
         self.image = self.original_img
@@ -259,24 +248,23 @@ class Dog(pygame.sprite.Sprite):
         self.dy = 0
         self.facing_right = True
 
-    def update(self, map_rects, player=None):
+    def update(self, map_rects: List[pygame.Rect], player: Optional[Player] = None):
         self.rect.x += self.vx
         hit = False
         for block in map_rects:
             if self.rect.colliderect(block):
                 hit = True
-                if self.vx > 0:
-                    self.rect.right = block.left
-                else:
-                    self.rect.left = block.right
-        if hit:
-            self.vx *= -1
+                if self.vx > 0: self.rect.right = block.left
+                else: self.rect.left = block.right
+        if hit: self.vx *= -1
+        # 向きに合わせて画像を反転
         if self.vx < 0 and not self.facing_right:
             self.facing_right = True
             self.image = self.original_img
         elif self.vx > 0 and self.facing_right:
             self.facing_right = False
             self.image = pygame.transform.flip(self.original_img, True, False)
+        
         self.dy += GRAVITY
         self.rect.y += self.dy
         on_ground = False
@@ -286,46 +274,38 @@ class Dog(pygame.sprite.Sprite):
                     self.rect.bottom = block.top
                     self.dy = 0
                     on_ground = True
-                elif self.dy < 0:
-                    self.rect.top = block.bottom
-                    self.dy = 0
-        if on_ground:
-            self.dy = 0
+        if on_ground: self.dy = 0
 
 class Ghost(pygame.sprite.Sprite):
-    def __init__(self, x, y):
+    """目を合わせると止まる敵クラス"""
+    def __init__(self, x: int, y: int):
         super().__init__()
         self.image_normal = load_img("yuurei.png", (TILE_SIZE, TILE_SIZE))
         self.image_stop = load_img("yuurei2.png", (TILE_SIZE, TILE_SIZE))
         self.image = self.image_normal
         self.rect = self.image.get_rect(topleft=(x, y))
         self.facing_right = True
-    def update(self, player):
+
+    def update(self, player: Player):
         px, py = player.rect.center
         gx, gy = self.rect.center
         dx = 1 if px > gx else -1 if px < gx else 0
         dy = 1 if py > gy else -1 if py < gy else 0
-        if dx > 0:
-            self.facing_right = True
-        elif dx < 0:
-            self.facing_right = False
+        
+        self.facing_right = dx > 0
         ghost_side = 'right' if gx > px else 'left'
         look_at_ghost = (ghost_side == 'right' and player.facing_right) or (ghost_side == 'left' and not player.facing_right)
+        
         if look_at_ghost:
-            if self.facing_right:
-                self.image = pygame.transform.flip(self.image_stop, True, False)
-            else:
-                self.image = self.image_stop
+            self.image = pygame.transform.flip(self.image_stop, True, False) if self.facing_right else self.image_stop
             return
-        if self.facing_right:
-            self.image = pygame.transform.flip(self.image_normal, True, False)
-        else:
-            self.image = self.image_normal
+        
+        self.image = pygame.transform.flip(self.image_normal, True, False) if self.facing_right else self.image_normal
         self.rect.x += dx * GHOST_SPEED
         self.rect.y += dy * GHOST_SPEED
 
 class Fish(pygame.sprite.Sprite):
-    def __init__(self, x, y):
+    def __init__(self, x: int, y: int):
         super().__init__()
         self.image = load_img("fish.png", (FISH_SIZE, FISH_SIZE))
         self.rect = self.image.get_rect(center=(x + TILE_SIZE // 2, y + TILE_SIZE // 2))
@@ -356,10 +336,32 @@ class Image(pygame.sprite.Sprite):
         super().__init__()
         self.image = load_img(img_name)
         self.rect = self.image.get_rect(topleft=(x, y))
-
     @classmethod
-    def serihu(cls, x, y):
-        return cls(x, y, "serihu.png")
+    def serihu(cls, x, y): return cls(x, y, "serihu.png")
+
+class MovingPlatform(pygame.sprite.Sprite):
+    def __init__(self, x, y, vx=PLATFORM_SPEED, range_pixels=PLATFORM_RANGE, vertical=False):
+        super().__init__()
+        self.image = load_img("platform.png", (TILE_SIZE, TILE_SIZE))
+        self.rect = self.image.get_rect(topleft=(x, y))
+        self.base_x = x
+        self.base_y = y
+        self.vx = vx if not vertical else 0
+        self.vy = 0 if not vertical else vx
+        self.range = range_pixels
+        self.vertical = vertical
+
+    def update(self):
+        self.rect.x += self.vx
+        self.rect.y += self.vy
+        if not self.vertical:
+            if self.rect.x < self.base_x - self.range or self.rect.x > self.base_x + self.range:
+                self.vx *= -1
+                self.rect.x = max(self.base_x - self.range, min(self.rect.x, self.base_x + self.range))
+        else:
+            if self.rect.y < self.base_y - self.range or self.rect.y > self.base_y + self.range:
+                self.vy *= -1
+                self.rect.y = max(self.base_y - self.range, min(self.rect.y, self.base_y + self.range))
 
 class MovingPlatform(pygame.sprite.Sprite):
     def __init__(self, x, y, vx=PLATFORM_SPEED, range_pixels=PLATFORM_RANGE, vertical=False):
@@ -394,9 +396,10 @@ font = pygame.font.Font("C:/Windows/Fonts/msgothic.ttc", 32)
 pg.mixer.music.load("sound/BGM.mp3")  # BGMロード
 
 game_state: str = "title"
+start_time = 0
 
 def reset_game():
-    global all_sprites, enemies, fish_group, star_group, player, fish_total, map_rects, goal_rect, MAP, MAP_WIDTH, MAP_HEIGHT, platforms
+    global all_sprites, enemies, fish_group, star_group, player, fish_total, map_rects, goal_rect, MAP, MAP_WIDTH, MAP_HEIGHT, platforms, start_time
 
     MAP = get_map()
     MAP_WIDTH = len(MAP[0])
@@ -407,33 +410,30 @@ def reset_game():
     fish_group = pygame.sprite.Group()
     star_group = pygame.sprite.Group()  # スターグループの初期化（無敵）
     platforms = pygame.sprite.Group()
+    all_sprites, enemies, fish_group, map_rects = pygame.sprite.Group(), pygame.sprite.Group(), pygame.sprite.Group(), []
     map_rects = []
     goal_rect = None
 
     for y, row in enumerate(MAP):
         for x, v in enumerate(row):
             px, py = x * TILE_SIZE, y * TILE_SIZE
-            if v == 1:
-                map_rects.append(pygame.Rect(px, py, TILE_SIZE, TILE_SIZE))
+            if v == 1: map_rects.append(pygame.Rect(px, py, TILE_SIZE, TILE_SIZE))
             elif v == 2:
                 dog = Dog(px, py)
-                all_sprites.add(dog)
-                enemies.add(dog)
+                all_sprites.add(dog); enemies.add(dog)
             elif v == 3:
                 ghost = Ghost(px, py)
-                all_sprites.add(ghost)
-                enemies.add(ghost)
+                all_sprites.add(ghost); enemies.add(ghost)
             elif v == 4:
                 fish = Fish(px, py)
-                all_sprites.add(fish)
-                fish_group.add(fish)
+                all_sprites.add(fish); fish_group.add(fish)
             elif v == 5:
                 goal = Goal(px, py)
-                all_sprites.add(goal)
-                goal_rect = goal.rect
+                all_sprites.add(goal); goal_rect = goal.rect
             elif v == 6:
                 image = Image.serihu(px, py)
                 all_sprites.add(image)
+                all_sprites.add(Image.serihu(px, py))
             elif v == 8:  # スターの配置（無敵）
                 star = Star(px, py)
                 all_sprites.add(star)
@@ -443,11 +443,10 @@ def reset_game():
                 all_sprites.add(platform)
                 platforms.add(platform)
 
-    player_start_y = (MAP_HEIGHT - 3) * TILE_SIZE
-    player = Player(32, player_start_y)
+    player = Player(32, (len(MAP) - 3) * TILE_SIZE)
     all_sprites.add(player)
-
     fish_total = len(fish_group)
+    start_time = pygame.time.get_ticks()
 
 reset_game()
 
@@ -460,6 +459,7 @@ while True:
         pg.mixer.music.stop()  # ゲーム中以外の時BGMを停止
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
+            pygame.quit(); sys.exit()
             exit()
         if event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:  # ESCで一時停止／再開（吉留)（一時停止）
             if game_state == "playing":
@@ -489,25 +489,32 @@ while True:
 
 
     if game_state == "playing":
+        # [追加] . 制限時間の計算
+        elapsed_time = (pygame.time.get_ticks() - start_time) // 1000
+        remaining_time = max(0, LIMIT_TIME - elapsed_time)
+        if remaining_time <= 0:
+            game_state = "gameover"
+
         # まず移動プラットフォームを更新
         for p in platforms:
             p.update()
+
         player.update(keys, map_rects, platforms)
         for enemy in enemies:
-            if isinstance(enemy, Dog):
-                enemy.update(map_rects, player)
-            elif isinstance(enemy, Ghost):
-                enemy.update(player)
+            if isinstance(enemy, Dog): enemy.update(map_rects, player)
+            elif isinstance(enemy, Ghost): enemy.update(player)
 
+        # 敵との衝突判定
         for enemy in enemies.copy():
             if player.rect.colliderect(enemy.rect):
+                # 犬を踏みつけたら消える
                 if player.invincibility_timer > 0:  # 0の場合敵を削除、そうでない場合は消せない（無敵）
                     enemies.remove(enemy)  # 無敵中なら敵を消す(無敵)
                     all_sprites.remove(enemy)
                 else:
-                    if isinstance(enemy, Dog):
+                    if isinstance(enemy, Dog) and player.dy > 0 and player.rect.bottom - enemy.rect.top < TILE_SIZE // 2:
                         if player.dy > 0 and player.rect.bottom - enemy.rect.top < TILE_SIZE // 2:
-                            enemies.remove(enemy)
+                            enemies.remove(enemy); all_sprites.remove(enemy)
                             all_sprites.remove(enemy)
                             player.dy = JUMP_POWER // 2
                         else:
@@ -515,6 +522,7 @@ while True:
                     else:
                         game_state = "gameover"
 
+        # 魚獲得判定
         got_fish = pygame.sprite.spritecollide(player, fish_group, True)
         player.fish += len(got_fish)
 
@@ -522,9 +530,9 @@ while True:
         if got_star:
             player.invincibility_timer = INVINCIBLE_TIME
 
-        if 'goal_rect' in locals() and player.rect.colliderect(goal_rect):
-            if player.fish >= fish_total:
-                game_state = "clear"
+        # [追加2] . 魚をすべて獲得したらクリア
+        if player.fish >= fish_total:
+            game_state = "clear"
 
         if player.rect.top > SCREEN_HEIGHT:
             game_state = "gameover"
@@ -533,35 +541,37 @@ while True:
     camera_x = 0
     if 'player' in locals():
         camera_x = max(0, min(player.rect.centerx - SCREEN_WIDTH // 2, (MAP_WIDTH * TILE_SIZE) - SCREEN_WIDTH))
+        screen.fill((110, 190, 255))
 
     if game_state == "title":
-        screen.fill((110, 190, 255))
         txt1 = font.render("Super Neko World", True, (50, 50, 50))
         txt2 = font.render("スペースキーでスタート", True, (0,0,0))
         screen.blit(txt1, (SCREEN_WIDTH//2 - txt1.get_width()//2, 150))
         screen.blit(txt2, (SCREEN_WIDTH//2 - txt2.get_width()//2, 260))
     else:
-        screen.fill((110, 190, 255))
         for r in map_rects:
-            rx = r.x - camera_x
-            if -TILE_SIZE < rx < SCREEN_WIDTH:
-                pygame.draw.rect(screen, (130, 100, 70), (rx, r.y, TILE_SIZE, TILE_SIZE))
-        if 'goal_rect' in locals() and goal_rect:
-            rx = goal_rect.x - camera_x
-
+            pygame.draw.rect(screen, (130, 100, 70), (r.x - camera_x, r.y, TILE_SIZE, TILE_SIZE))
         for sprite in all_sprites:
-            rx = sprite.rect.x - camera_x
-            if -TILE_SIZE < rx < SCREEN_WIDTH:
-                screen.blit(sprite.image, (rx, sprite.rect.y))
+            screen.blit(sprite.image, (sprite.rect.x - camera_x, sprite.rect.y))
 
+        # UI表示
         fish_txt = font.render(f"魚: {player.fish}/{fish_total}", True, (0,0,0))
         screen.blit(fish_txt, (10, 10))
 
+        # [追加1]. 制限時間の表示（30秒以下で赤色）
+        timer_color = (255, 0, 0) if remaining_time <= 30 else (0, 0, 0)
+        time_txt = font.render(f"残り時間: {remaining_time}", True, timer_color)
+        screen.blit(time_txt, (SCREEN_WIDTH - 200, 10))
+
         if game_state == "gameover":
             txt = font.render("GAME OVER", True, (255,0,0))
-            screen.blit(txt, (SCREEN_WIDTH//2 - txt.get_width()//2, 220))
+            # [追加3] . ゲームオーバー時の獲得数表示
+            score_txt = font.render(f"獲得した魚の数: {player.fish}", True, (255, 255, 255))
+            screen.blit(txt, (SCREEN_WIDTH//2 - txt.get_width()//2, 180))
+            screen.blit(score_txt, (SCREEN_WIDTH//2 - score_txt.get_width()//2, 230))
             txt2 = font.render("スペースキーでタイトルへ", True, (255,255,255))
-            screen.blit(txt2, (SCREEN_WIDTH//2 - txt2.get_width()//2, 260))
+            screen.blit(txt2, (SCREEN_WIDTH//2 - txt2.get_width()//2, 280))
+            
         if game_state == "clear":
             txt = font.render("STAGE CLEAR!", True, (0,0,255))
             screen.blit(txt, (SCREEN_WIDTH//2 - txt.get_width()//2, 220))
