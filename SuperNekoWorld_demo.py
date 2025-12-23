@@ -16,6 +16,8 @@ FISH_SIZE = 24
 MAP_WIDTH = 40
 MAP_HEIGHT = 15
 ASSET_DIR = "images"  # アセットディレクトリのパス
+PLATFORM_RANGE = TILE_SIZE * 3
+PLATFORM_SPEED = 2
 INVINCIBLE_TIME = 200 # 無敵時間（フレーム数：60fpsで約5秒）（無敵）
 
 def load_img(name, size=None):
@@ -385,17 +387,25 @@ class MovingPlatform(pygame.sprite.Sprite):
                 self.rect.y = max(self.base_y - self.range, min(self.rect.y, self.base_y + self.range))
 
 pygame.init()
-pg.mixer.init()
+audio_enabled = True
+try:
+    pg.mixer.init()
+except Exception:
+    audio_enabled = False
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Super Neko World")
 clock = pygame.time.Clock()
-font = pygame.font.Font("C:/Windows/Fonts/msgothic.ttc", 32)
-pg.mixer.music.load("sound/BGM.mp3")  # BGMロード
+font = pygame.font.SysFont("dejavusans", 32)
+if audio_enabled:
+    try:
+        pg.mixer.music.load("sound/BGM.mp3")  # BGMロード
+    except Exception:
+        audio_enabled = False
 
 game_state: str = "title"
 
 def reset_game():
-    global all_sprites, enemies, fish_group, star_group, player, fish_total, map_rects, goal_rect, MAP, MAP_WIDTH, MAP_HEIGHT
+    global all_sprites, enemies, fish_group, star_group, player, fish_total, map_rects, goal_rect, MAP, MAP_WIDTH, MAP_HEIGHT, platforms
 
     MAP = get_map()
     MAP_WIDTH = len(MAP[0])
@@ -405,6 +415,7 @@ def reset_game():
     enemies = pygame.sprite.Group()
     fish_group = pygame.sprite.Group()
     star_group = pygame.sprite.Group()  # スターグループの初期化（無敵）
+    platforms = pygame.sprite.Group()
     map_rects = []
     goal_rect = None
 
@@ -437,6 +448,7 @@ def reset_game():
                 all_sprites.add(star)
                 star_group.add(star)
                 platform = MovingPlatform(px, py, vertical=True)
+                all_sprites.add(platform)
                 platforms.add(platform)
 
     player_start_y = (MAP_HEIGHT - 3) * TILE_SIZE
@@ -450,9 +462,9 @@ reset_game()
 # --- メインループ ---
 while True:
     keys = pygame.key.get_pressed()
-    if game_state == "playing" and not pg.mixer.music.get_busy():
+    if game_state == "playing" and audio_enabled and not pg.mixer.music.get_busy():
         pg.mixer.music.play(loops=-1)  # ゲーム中BGMをループ再生
-    elif game_state in ("gameover", "title", "clear") and pg.mixer.music.get_busy():
+    elif game_state in ("gameover", "title", "clear") and audio_enabled and pg.mixer.music.get_busy():
         pg.mixer.music.stop()  # ゲーム中以外の時BGMを停止
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
@@ -477,8 +489,12 @@ while True:
                 else:
                     player.max_jump = 1
                 if player.jump_count < player.max_jump:
-                    snd = pg.mixer.Sound("sound/jump.mp3")
-                    snd.play()  # ジャンプ時jump.mp3
+                    if audio_enabled:
+                        try:
+                            snd = pg.mixer.Sound("sound/jump.mp3")
+                            snd.play()  # ジャンプ時jump.mp3
+                        except Exception:
+                            audio_enabled = False
                     player.dy = JUMP_POWER
                     player.jump_count += 1
                     player.on_ground = False
