@@ -14,7 +14,7 @@ DOG_SPEED = -2
 FISH_SIZE = 24
 MAP_WIDTH = 40
 MAP_HEIGHT = 15
-LIMIT_TIME = 90  # 制限時間(秒)
+LIMIT_TIME = 30  # 制限時間(秒)
 ASSET_DIR = os.path.join(os.path.dirname(__file__), "images")
 
 def load_img(name: str, size: Optional[Tuple[int, int]] = None) -> pygame.Surface:
