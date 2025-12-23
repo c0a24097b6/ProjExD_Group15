@@ -1,5 +1,8 @@
 import pygame
 import os
+import pygame as pg
+
+os.chdir(os.path.dirname(os.path.abspath(__file__)))
 
 SCREEN_WIDTH, SCREEN_HEIGHT = 640, 480
 TILE_SIZE = 32
@@ -11,7 +14,7 @@ DOG_SPEED = -2
 FISH_SIZE = 24
 MAP_WIDTH = 40
 MAP_HEIGHT = 15
-ASSET_DIR = os.path.join(os.path.dirname(__file__), "images")
+ASSET_DIR = "images"
 
 def load_img(name, size=None):
     path = os.path.join(ASSET_DIR, name)
@@ -132,6 +135,8 @@ class Player(pygame.sprite.Sprite):
         self.on_ground = False
         self.fish = 0
         self.facing_right = True
+        self.jump_count = 0  # ジャンプ回数
+        self.max_jump = 1  # 最大ジャンプ回数
 
     def update(self, keys, map_rects):
         self.dx = 0
@@ -145,9 +150,10 @@ class Player(pygame.sprite.Sprite):
             if not self.facing_right:
                 self.facing_right = True
                 self.image = self.original_img
-        if keys[pygame.K_SPACE] and self.on_ground:
-            self.dy = JUMP_POWER
-            self.on_ground = False
+        # if keys[pygame.K_SPACE] and self.jump_count < self.max_jump:
+        #     self.dy = JUMP_POWER
+        #     self.jump_count += 1  # ジャンプ回数を1増やす
+        #     self.on_ground = False
         self.dy += GRAVITY
         self.rect.x += self.dx
         for block in map_rects:
@@ -164,6 +170,7 @@ class Player(pygame.sprite.Sprite):
                     self.rect.bottom = block.top
                     self.dy = 0
                     self.on_ground = True
+                    self.jump_count = 0  # 地面についたときジャンプ回数をリセット
                 elif self.dy < 0:
                     self.rect.top = block.bottom
                     self.dy = 0
@@ -270,10 +277,12 @@ class Image(pygame.sprite.Sprite):
         return cls(x, y, "serihu.png")
 
 pygame.init()
+pg.mixer.init()
 screen = pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT))
 pygame.display.set_caption("Super Neko World")
 clock = pygame.time.Clock()
 font = pygame.font.Font("C:/Windows/Fonts/msgothic.ttc", 32)
+pg.mixer.music.load("sound/BGM.mp3")  # BGMロード
 
 game_state = "title"
 
@@ -326,6 +335,10 @@ reset_game()
 # --- メインループ ---
 while True:
     keys = pygame.key.get_pressed()
+    if game_state == "playing" and not pg.mixer.music.get_busy():
+        pg.mixer.music.play(loops=-1)  # ゲーム中BGMをループ再生
+    elif game_state in ("gameover", "title", "clear") and pg.mixer.music.get_busy():
+        pg.mixer.music.stop()  # ゲーム中以外の時BGMを停止
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             exit()
@@ -336,6 +349,19 @@ while True:
         elif game_state in ("gameover", "clear"):
             if event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
                 game_state = "title"
+        if event.type == pygame.KEYDOWN:  
+            if event.key == pygame.K_SPACE:
+                if player.fish >= 5:
+                    player.max_jump = 2  # 魚5個以上の時、2段ジャンプ
+                else:
+                    player.max_jump = 1
+                if player.jump_count < player.max_jump:
+                    snd = pg.mixer.Sound("sound/jump.mp3")
+                    snd.play()  # ジャンプ時jump.mp3
+                    player.dy = JUMP_POWER
+                    player.jump_count += 1
+                    player.on_ground = False
+
 
     if game_state == "playing":
         player.update(keys, map_rects)
