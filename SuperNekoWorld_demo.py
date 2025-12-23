@@ -12,7 +12,7 @@ DOG_SPEED = -2
 FISH_SIZE = 24
 MAP_WIDTH = 40
 MAP_HEIGHT = 15
-ASSET_DIR = "images"
+ASSET_DIR = "images"  # アセットディレクトリのパス
 INVINCIBLE_TIME = 200 # 無敵時間（フレーム数：60fpsで約5秒）（無敵）
 
 def load_img(name, size=None):
